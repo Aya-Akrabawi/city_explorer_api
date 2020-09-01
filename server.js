@@ -2,8 +2,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const pg = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000
+const client = new pg.Client(process.env.DATABASE_URL);
 app.use(cors());
 const superAgent = require('superagent')
 
@@ -19,22 +21,45 @@ app.use(errorFunc);
 function locationFunc(request, respond) {
     const cityData = request.query.city;
     console.log(cityData);
-    getLocationFunc(cityData)
-        .then(locationData => respond.status(200).json(locationData));
-}
+    let dataLocation=dataBase(cityData);
+    let apiData = getLocationFunc(cityData);
+    if (dataLocation !== 0){
+    dataLocation.then(
+        locationData => respond.status(200).json(locationData))}
+        else{
+            apiData.then(
+                locationData => respond.status(200).json(locationData))}
+        }
+
+// function dataBase (cityData){
+//     let safeValue = [cityData]
+//     let SQL = `SELECT search_query,formatted_query,latitude,longitude FROM location WHERE search_query = $1;`;
+//     client.query(SQL,safeValue)
+//     .then(results =>{
+//          return (results.rows);
+//     })
+//     .catch (error => errorHandler(error,req,res))
+
+// }
 
 function getLocationFunc(cityData) {
     const locationKey = process.env.GEOCODE_API_KEY;
     const locationURL = `https://eu1.locationiq.com/v1/search.php?key=${locationKey}&q=${cityData}&format=json`
-
+    let safeValue = [cityData]
+    let SQL = `SELECT search_query,formatted_query,latitude,longitude FROM location WHERE search_query = $1;`;
+    client.query(SQL,safeValue)
+    .then(results =>{
+        if (results.row.length){
+   
     return superAgent.get(locationURL)
         .then(data => {
             let locationData = new Location(cityData, data.body);
             return locationData;
             // respond.send(locationData);
         })
-
-
+    }
+        
+    })
 };
 
 function weatherFunc(req, res) {
